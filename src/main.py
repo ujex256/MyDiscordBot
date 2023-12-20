@@ -16,19 +16,23 @@ bot = commands.Bot(
     intents=intents  # 権限を設定
 )
 
+
 @bot.event
 async def on_ready():
     print("Bot is ready!")
+    await bot.tree.sync()
+    print("Synced")
 
 
-@bot.event
-async def on_message(message: discord.Message):
-    """メッセージをおうむ返しにする処理"""
-
-    if message.author.bot:  # ボットのメッセージは無視
-        return
-
-    await message.reply(message.content)
+@bot.tree.command(name="ping", description="Ping!!!")
+async def ping(ctx: discord.Interaction):
+    sec = round(bot.latency * 1000)
+    embed = discord.Embed(
+        title="Pong!!",
+        description=str(sec) + "ms",
+        color=discord.Colour.blue()
+    )
+    await ctx.response.send_message(embed=embed)
 
 
 if __name__ == "__main__":
