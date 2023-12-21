@@ -14,7 +14,7 @@ intents.message_content = True
 
 
 bot = commands.Bot(
-    command_prefix="!",
+    command_prefix="",
     case_insensitive=True,
     intents=intents
 )
@@ -48,6 +48,15 @@ class CommonComands(commands.Cog):
     @app_commands.command(name="random", description="random.randint()")
     async def random(self, ctx: discord.Interaction):
         await ctx.response.send_message(randint(1, 100))
+
+    @app_commands.command(name="add_rta", description="RTAのスケジュールを追加します")
+    async def add_rta(self, ctx: discord.Interaction):
+        if not ctx.permissions.administrator:
+            embed = discord.Embed(
+                title="権限が不足しています",
+                description="サーバーの管理権限を持っている人のみが追加できます"
+            )
+            await ctx.response.send_message(embed=embed, ephemeral=True)
 
 
 if __name__ == "__main__":
