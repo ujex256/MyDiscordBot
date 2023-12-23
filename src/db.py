@@ -1,4 +1,8 @@
+import discord
+
 import sqlite3
+from datetime import datetime
+from textwrap import dedent
 from pathlib import Path
 
 
@@ -13,7 +17,7 @@ def get_db():
 
 def init_db(db: sqlite3.Connection):
     cur = db.cursor()
-    cur.execute(
+    cur.execute(dedent(
         """
         CREATE TABLE IF NOT EXISTS rta_db(
             guild_id INTEGER,
@@ -23,7 +27,7 @@ def init_db(db: sqlite3.Connection):
             created_at TEXT
         ) STRICT;
         """
-    )
+    ))
     db.commit()
 
 
@@ -34,6 +38,42 @@ class BotDB:
         self.db = db
         init_db(self.db)
 
+    @classmethod
+    def get_default_db(cls):
+        return cls(get_db())
+
+    def add_rta(self, date: str | datetime, interaction: discord.Interaction):
+        if isinstance(date, str):
+            date = datetime.fromisoformat(date)
+
+        cur = self.db.cursor()
+        print(date.isoformat())
+        cur.execute(
+            dedent(
+                """
+                INSERT INTO rta_db
+                VALUES (?,?,?,?,?)
+                """
+            ),
+            (
+                interaction.guild_id,
+                interaction.channel_id,
+                interaction.user.id,
+                date.isoformat(),
+                interaction.created_at.isoformat(),
+            ),
+        )
+        self.db.commit()
+
+    def get_rta(self):
+        cur = self.db.cursor()
+        cur.execute("SELECT * FROM rta_db")
+        d = cur.fetchall()
+        cur.close()
+        return d
+
 
 if __name__ == "__main__":
-    BotDB(get_db())
+    d = BotDB(get_db())
+    print(d.get_rta())
+    d.db.close()
