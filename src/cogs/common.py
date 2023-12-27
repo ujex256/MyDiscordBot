@@ -44,7 +44,7 @@ class CommonComands(commands.Cog):
 
     @ac.command(name="extract_url", description="短縮URLを展開します")
     async def extract_url(self, ctx: discord.Interaction, url: str):
-gg        if not re.match(r".*://", url):
+        if not re.match(r".*://", url):
             url = "https://" + url
 
         async def validate(url):
