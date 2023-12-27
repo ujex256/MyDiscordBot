@@ -57,15 +57,16 @@ class BotDB:
 
         cur = self.db.cursor()
         print(date.isoformat())
+        if interaction.channel_id is None:
+            raise ValueError("channel_id is None")
         cur.execute(
             dedent(
                 """
                 INSERT INTO rta_db
-                VALUES (?,?,?,?,?)
+                VALUES (?,?,?,?)
                 """
             ),
             (
-                interaction.guild_id,
                 interaction.channel_id,
                 interaction.user.id,
                 date.isoformat(),

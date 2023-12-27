@@ -1,4 +1,5 @@
 from os import getenv
+import sys
 from typing import Literal
 
 import discord
@@ -17,8 +18,11 @@ main_db = db.BotDB.get_default_db()
 @bot.event
 async def on_ready():
     print("Bot is ready!")
-    await bot.tree.sync()
-    print("Synced")
+    if sys.argv[1] == "-n":
+        await bot.tree.sync()
+        print("Synced")
+    else:
+        print("skipped")
 
 
 @bot.event

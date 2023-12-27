@@ -44,7 +44,7 @@ class CommonComands(commands.Cog):
 
     @ac.command(name="extract_url", description="短縮URLを展開します")
     async def extract_url(self, ctx: discord.Interaction, url: str):
-        if not (url.startswith("https://") or url.startswith("http://")):
+gg        if not re.match(r".*://", url):
             url = "https://" + url
 
         async def validate(url):
@@ -60,15 +60,28 @@ class CommonComands(commands.Cog):
                 and not re.match(IP_REGEX, parsed.host)
             )
 
-        if not validate(url):
+        if not await validate(url):
             embed = discord.Embed(title="失敗", description="無効なURLかIPアドレスで指定されています")
             await ctx.response.send_message(embed=embed)
             return
 
-        async with aiohttp.ClientSession() as session:
-            async with session.head
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.head(url, allow_redirects=True) as resp:
+                    history = list(map(lambda x: x.url, resp.history)) + [resp.url]
+                    status = resp.status
+        except Exception:
+            embed = discord.Embed(title="エラー！", description="リクエストに失敗した")
+            await ctx.response.send_message(embed=embed)
+            return
 
-
+        if len(history) == 1:
+            embed = discord.Embed(title="結果", description="リダイレクトは無かった")
+        else:
+            desc = [f"{ind+1}. {url}" for ind, url in enumerate(history)]
+            embed = discord.Embed(title="結果", description="\n".join(desc))
+            embed.set_footer(text=f"ステータスコード: {status}")
+        await ctx.response.send_message(embed=embed)
 
     @ac.command(name="add_rta", description="RTAのスケジュールを追加します")
     async def add_rta(
@@ -86,6 +99,7 @@ class CommonComands(commands.Cog):
                 title="権限が不足しています", description="サーバーの管理権限を持っている人のみが追加できます"
             )
             await ctx.response.send_message(embed=embed, ephemeral=True)
+            return
         if year is None:
             year = datetime.today().year
         date = datetime(year, month, day, hour, minute, second)
@@ -99,6 +113,8 @@ class CommonComands(commands.Cog):
     )
     async def get_rta(self, ctx: discord.Interaction, sort: str):
         sort_type = db.SortType(sort)
+        if ctx.channel_id is None:
+            raise
         data = main_db.get_rta(ctx.channel_id, sort_type)
         resp = discord.Embed(title="このサーバーでの結果", description="aaaa")
         await ctx.response.send_message(embed=resp)
