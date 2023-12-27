@@ -4,12 +4,15 @@ import sqlite3
 from datetime import datetime
 from textwrap import dedent
 from pathlib import Path
+from enum import Enum
 
 
 def get_db():
     p = Path.cwd()
     if p.name == "src":
         p = p.parent
+    elif p.name == "cogs":
+        p = p.parent.parent
     db = p.joinpath("db")
     db.mkdir(exist_ok=True)
     return sqlite3.connect(db.joinpath("main.sqlite"))
@@ -17,18 +20,24 @@ def get_db():
 
 def init_db(db: sqlite3.Connection):
     cur = db.cursor()
-    cur.execute(dedent(
-        """
+    cur.execute(
+        dedent(
+            """
         CREATE TABLE IF NOT EXISTS rta_db(
-            guild_id INTEGER,
             channel_id INTEGER,
             user_id INTEGER,
             date TEXT,
             created_at TEXT
         ) STRICT;
         """
-    ))
+        )
+    )
     db.commit()
+
+
+class SortType(Enum):
+    ASC = "ASC"
+    DESC = "DESC"
 
 
 class BotDB:
@@ -65,9 +74,30 @@ class BotDB:
         )
         self.db.commit()
 
-    def get_rta(self):
+    def get_all_rta(self, sort_type: SortType = SortType.DESC):
+        return self._get_rta(sort_type=sort_type)
+
+    def get_rta(self, channel_id: int, sort_type: SortType = SortType.DESC):
+        return self._get_rta(channel_id, sort_type)
+
+    def _get_rta(
+        self,
+        channel_id: int | None = None,
+        sort_type: SortType = SortType.DESC,
+    ):
+        # なんかキモい
+        if not (
+            isinstance(sort_type, SortType)
+            and isinstance(channel_id, int) or channel_id is None
+        ):
+            raise ValueError("SQLインジェクションやめて!!!")
+
+        where = ""
+        if channel_id is not None:
+            where = f"WHERE channel_id={channel_id} "
+
         cur = self.db.cursor()
-        cur.execute("SELECT * FROM rta_db")
+        cur.execute(f"SELECT * FROM rta_db {where}ORDER BY date {sort_type.value};")
         d = cur.fetchall()
         cur.close()
         return d
@@ -75,5 +105,5 @@ class BotDB:
 
 if __name__ == "__main__":
     d = BotDB(get_db())
-    print(d.get_rta())
+    print(d.get_all_rta(SortType.ASC))
     d.db.close()

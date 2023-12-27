@@ -1,53 +1,76 @@
-from discord.ext import commands, tasks
-from discord import app_commands
-import discord
-
+import re
+from datetime import datetime, timezone
 from random import randint
-from datetime import datetime
-from datetime import timezone
+
+import aiohttp
+import discord
+import yarl
+from discord import app_commands as ac
+from discord.ext import commands, tasks
+from discord.ext.commands import Bot
 
 import db
-
 
 main_db = db.BotDB.get_default_db()
 
 
 class CommonComands(commands.Cog):
-    def __init__(self, bot: discord.Client):
+    def __init__(self, bot: Bot):
         self.bot = bot
         self.task_starter()
 
     def task_starter(self):
-        print("roop")
-        if self.roop.is_running():
-            self.roop.restart()
-            print("restarted")
-        else:
-            self.roop.start()
-            print("started")
+        self.check_rta.start()
 
     def cog_unload(self):
-        self.roop.cancel()
+        self.check_rta.cancel()
 
-    @app_commands.command(name="ping", description="Ping!!!")
+    @ac.command(name="ping", description="Ping!!!")
     async def ping(self, ctx: discord.Interaction):
-        print("sai")
         sec = round(self.bot.latency * 1000)
         embed = discord.Embed(
-            title="Pong!!",
-            description=str(sec) + "ms",
-            color=discord.Colour.blue()
+            title="Pong!!", description=str(sec) + "ms", color=discord.Colour.blue()
         )
 
         value = datetime.now(timezone.utc) - ctx.created_at
-        embed.add_field(name="nowDate-timestamp", value=str(value.microseconds / 1000) + "ms")
+        embed.add_field(
+            name="nowDate-timestamp", value=str(value.microseconds / 1000) + "ms"
+        )
         await ctx.response.send_message(embed=embed)
 
-    @app_commands.command(name="random", description="random.randint()")
+    @ac.command(name="random", description="random.randint()")
     async def random(self, ctx: discord.Interaction):
         await ctx.response.send_message(randint(1, 100))
 
-    @app_commands.command(name="add_rta", description="RTAのスケジュールを追加します")
+    @ac.command(name="extract_url", description="短縮URLを展開します")
+    async def extract_url(self, ctx: discord.Interaction, url: str):
+        if not (url.startswith("https://") or url.startswith("http://")):
+            url = "https://" + url
+
+        async def validate(url):
+            IP_REGEX = r"^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"  # NOQA
+            try:
+                parsed = yarl.URL(url)
+            except ValueError:
+                return False
+            return (
+                parsed.host is not None
+                and parsed.scheme in ("http", "https")
+                and parsed.host != "localhost"
+                and not re.match(IP_REGEX, parsed.host)
+            )
+
+        if not validate(url):
+            embed = discord.Embed(title="失敗", description="無効なURLかIPアドレスで指定されています")
+            await ctx.response.send_message(embed=embed)
+            return
+
+        async with aiohttp.ClientSession() as session:
+            async with session.head
+
+
+
+    @ac.command(name="add_rta", description="RTAのスケジュールを追加します")
     async def add_rta(
         self,
         ctx: discord.Interaction,
@@ -56,12 +79,11 @@ class CommonComands(commands.Cog):
         hour: int,
         minute: int,
         year: int | None = None,
-        second: int = 0
+        second: int = 0,
     ):
         if not ctx.permissions.administrator:
             embed = discord.Embed(
-                title="権限が不足しています",
-                description="サーバーの管理権限を持っている人のみが追加できます"
+                title="権限が不足しています", description="サーバーの管理権限を持っている人のみが追加できます"
             )
             await ctx.response.send_message(embed=embed, ephemeral=True)
         if year is None:
@@ -70,19 +92,30 @@ class CommonComands(commands.Cog):
         main_db.add_rta(date, ctx)
         await ctx.response.send_message("success")
 
+    @ac.command(name="get_rta", description="設定されたスケジュールを表示")
+    @ac.describe(sort="ソートの順番")
+    @ac.choices(
+        sort=[ac.Choice(name="昇順", value="ASC"), ac.Choice(name="降順", value="DESC")]
+    )
+    async def get_rta(self, ctx: discord.Interaction, sort: str):
+        sort_type = db.SortType(sort)
+        data = main_db.get_rta(ctx.channel_id, sort_type)
+        resp = discord.Embed(title="このサーバーでの結果", description="aaaa")
+        await ctx.response.send_message(embed=resp)
+
     @tasks.loop(seconds=5)
-    async def roop(self):
+    async def check_rta(self):
         ch = self.bot.get_all_channels()
         for i in ch:
             if i.type == discord.ChannelType.text:
-                await i.send("headddday")
+                pass
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: Bot):
     print("Common Comands added")
     await bot.add_cog(CommonComands(bot))
 
 
-async def teardown(bot: commands.Bot):
+async def teardown(bot: Bot):
     main_db.db.close()
     print("db closed")
