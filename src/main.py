@@ -18,11 +18,11 @@ main_db = db.BotDB.get_default_db()
 @bot.event
 async def on_ready():
     print("Bot is ready!")
-    if sys.argv[1] == "-n":
+    if len(sys.argv) == 2 and sys.argv[1] == "-n":
+        print("skipped")
+    else:
         await bot.tree.sync()
         print("Synced")
-    else:
-        print("skipped")
 
 
 @bot.event
