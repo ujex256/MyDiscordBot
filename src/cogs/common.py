@@ -17,13 +17,6 @@ main_db = db.BotDB.get_default_db()
 class CommonComands(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.task_starter()
-
-    def task_starter(self):
-        self.check_rta.start()
-
-    def cog_unload(self):
-        self.check_rta.cancel()
 
     @ac.command(name="ping", description="Ping!!!")
     async def ping(self, ctx: discord.Interaction):
@@ -83,6 +76,23 @@ class CommonComands(commands.Cog):
             embed.set_footer(text=f"ステータスコード: {status}")
         await ctx.response.send_message(embed=embed)
 
+
+class RTACog(commands.Cog):
+    def __init__(self, bot: Bot) -> None:
+        self.bot = bot
+        self.task_starter()
+
+    def task_starter(self):
+        self.check_rta.start()
+
+    def cog_unload(self):
+        self.check_rta.cancel()
+
+    @tasks.loop(seconds=5)
+    async def check_rta(self):
+        for i in main_db.get_all_rta_iter():
+            print(i)
+
     @ac.command(name="add_rta", description="RTAのスケジュールを追加します")
     async def add_rta(
         self,
@@ -119,17 +129,11 @@ class CommonComands(commands.Cog):
         resp = discord.Embed(title="このサーバーでの結果", description="aaaa")
         await ctx.response.send_message(embed=resp)
 
-    @tasks.loop(seconds=5)
-    async def check_rta(self):
-        ch = self.bot.get_all_channels()
-        for i in ch:
-            if i.type == discord.ChannelType.text:
-                pass
-
 
 async def setup(bot: Bot):
     print("Common Comands added")
     await bot.add_cog(CommonComands(bot))
+    await bot.add_cog(RTACog(bot))
 
 
 async def teardown(bot: Bot):
