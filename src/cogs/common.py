@@ -58,8 +58,9 @@ class CommonComands(commands.Cog):
             await ctx.response.send_message(embed=embed)
             return
 
+        header = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}  # NOQA
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(headers=header) as session:
                 async with session.head(url, allow_redirects=True) as resp:
                     history = list(map(lambda x: x.url, resp.history)) + [resp.url]
                     status = resp.status
