@@ -147,13 +147,16 @@ class RTACog(commands.Cog):
             # 30秒前の時
             if i["id"] in self.receiving:
                 continue
-            embed = discord.Embed(title="rta開始", description="nice")
+            embed = discord.Embed(
+                title="RTA開始",
+                description=f"設定された時刻は<t:{i['date']}>です")
             self.receiving.append(i["id"])
             self.receiving_ch.append(i["channel_id"])
             await ch.send(embed=embed)
 
     @ac.command(name="add_rta", description="RTAのスケジュールを追加します")
     @ac.guild_only()
+    @commands.has_permissions(administrator=True)
     async def add_rta(
         self,
         ctx: discord.Interaction,
@@ -164,21 +167,29 @@ class RTACog(commands.Cog):
         year: int | None = None,
         second: int = 0,
     ):
-        if not ctx.permissions.administrator:
-            embed = discord.Embed(
-                title="権限が不足しています", description="サーバーの管理権限を持っている人のみが追加できます"
-            )
-            await ctx.response.send_message(embed=embed, ephemeral=True)
-            return
         if year is None:
             year = dt.datetime.today().year
 
         date = dt.datetime(year, month, day, hour, minute, second, tzinfo=self.jst)
-        if main_db.get_near_rta(int(date.timestamp()), ctx.channel_id):
-            await ctx.response.send_message(content="だめです")
-            return
-        main_db.add_rta(date, ctx)
-        await ctx.response.send_message("success")
+        diff = date - dt.datetime.utcnow()
+        if diff.total_seconds() > 40:
+            embed = discord.Embed(
+                title="エラー！", description="もっと遅い時間にして",
+                color=discord.Color.red()
+            )
+        elif main_db.get_near_rta(int(date.timestamp()), ctx.channel_id):
+            embed = discord.Embed(
+                title="エラー!", description="時間が被っています",
+                color=discord.Color.red()
+            )
+        else:
+            main_db.add_rta(date, ctx)
+            embed = discord.Embed(
+                title="設定しました",
+                description=f"<t:{date.timestamp()}:f>に設定しました",
+                color=discord.Color.blue()
+            )
+        await ctx.response.send_message(embed=embed)
 
     @ac.command(name="get_rta", description="設定されたスケジュールを表示")
     @ac.describe(sort="ソートの順番")
@@ -193,7 +204,7 @@ class RTACog(commands.Cog):
 
         all_rta = main_db.get_all_rta(sort_type=sort_type)
         data = filter(lambda x: x["guild_id"] == ctx.guild_id, all_rta)
-        resp = discord.Embed(title="このサーバーでの結果")
+        resp = discord.Embed(title="このサーバーでの結果", colour=discord.Colour.blurple())
         for i, j in enumerate(data):
             date = int(j["date"])
             ch = j["channel_id"]
