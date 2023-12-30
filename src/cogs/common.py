@@ -125,7 +125,7 @@ class RTACog(commands.Cog):
             time = dt.datetime.fromtimestamp(i["date"])
             dur = time - dt.datetime.utcnow()
             tdiff = math.floor(dur.total_seconds())
-            if tdiff > 30:
+            if tdiff > 15:
                 continue
 
             ch = self.bot.get_channel(i["channel_id"])
@@ -133,7 +133,7 @@ class RTACog(commands.Cog):
                 raise Exception
 
             # 終了後の時
-            if tdiff <= -30:
+            if tdiff <= -15:
                 embed = discord.Embed(title="終わった *!!!*")
                 await ch.send(embed=embed)
                 try:
@@ -145,13 +145,15 @@ class RTACog(commands.Cog):
                 return
 
             # 30秒前の時
-            if i["id"] in self.receiving: continue
+            if i["id"] in self.receiving:
+                continue
             embed = discord.Embed(title="rta開始", description="nice")
             self.receiving.append(i["id"])
             self.receiving_ch.append(i["channel_id"])
             await ch.send(embed=embed)
 
     @ac.command(name="add_rta", description="RTAのスケジュールを追加します")
+    @ac.guild_only()
     async def add_rta(
         self,
         ctx: discord.Interaction,
@@ -183,6 +185,7 @@ class RTACog(commands.Cog):
     @ac.choices(
         sort=[ac.Choice(name="昇順", value="ASC"), ac.Choice(name="降順", value="DESC")]
     )
+    @ac.guild_only()
     async def get_rta(self, ctx: discord.Interaction, sort: str):
         sort_type = db.SortType(sort)
         if ctx.channel_id is None:
