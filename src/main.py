@@ -31,8 +31,16 @@ async def setup_hook():
 
 @bot.tree.command(name="reload", description="extensionをreload")
 async def reload_all(ctx: discord.Interaction, sync: bool):
+    if ctx.user.id != int(getenv("ADMIN_ID", 0)):
+        await ctx.response.send_message("You are not admin of this bot!!!!!!!!!")
+        return
+
     await bot.reload_extension("cogs.common")
-    embed = discord.Embed(title="Success*!*", description="リロードした")
+    embed = discord.Embed(
+        title="Success*!*",
+        description="リロードした",
+        color=discord.Colour.blue()
+    )
     await ctx.response.send_message(embed=embed)
     if sync:
         await bot.tree.sync()
