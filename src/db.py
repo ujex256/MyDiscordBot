@@ -7,6 +7,8 @@ from pathlib import Path
 from enum import Enum
 from contextlib import closing
 
+import utils
+
 
 def get_db():
     p = Path.cwd()
@@ -25,15 +27,18 @@ def init_db(db: sqlite3.Connection):
         dedent(
             """
         CREATE TABLE IF NOT EXISTS rta_db(
+            id INTEGER UNIQUE,
+            guild_id INTEGER,
             channel_id INTEGER,
-            user_id INTEGER,
-            date TEXT,
-            created_at TEXT
+            created_user INTEGER,
+            date REAL,
+            created_at INTEGER
         ) STRICT;
         """
         )
     )
     db.commit()
+    db.row_factory = sqlite3.Row
 
 
 class SortType(Enum):
@@ -55,61 +60,99 @@ class BotDB:
     def add_rta(self, date: str | datetime, interaction: discord.Interaction):
         if isinstance(date, str):
             date = datetime.fromisoformat(date)
+        if interaction.channel_id is None:
+            raise ValueError("channel_id is None")
 
         cur = self.db.cursor()
+        id = utils.generate_secure_id(10)
         print(date.isoformat())
-        if interaction.channel_id is None:
-            cur.close()
-            raise ValueError("channel_id is None")
         cur.execute(
             dedent(
                 """
                 INSERT INTO rta_db
-                VALUES (?,?,?,?)
+                VALUES (?,?,?,?,?,?);
                 """
             ),
             (
+                id,
+                interaction.guild_id,
                 interaction.channel_id,
                 interaction.user.id,
-                date.isoformat(),
-                interaction.created_at.isoformat(),
+                date.timestamp(),
+                int(interaction.created_at.timestamp()),
             ),
         )
         cur.close()
         self.db.commit()
+        return id
 
-    def get_all_rta(self, sort_type: SortType = SortType.ASC):
-        return self._get_rta(sort_type=sort_type)
+    def get_all_rta(self, sort_type: SortType = SortType.ASC) -> list[sqlite3.Row]:
+        return list(self._get_rta(sort_type=sort_type))
 
     def get_all_rta_iter(self, sort_type: SortType = SortType.ASC):
-        return self._get_rta(sort_type=sort_type, iter=True)
+        yield from self._get_rta(sort_type=sort_type)
 
-    def get_rta(self, channel_id: int, sort_type: SortType = SortType.ASC):
-        return self._get_rta(channel_id, sort_type)
+    def get_rta(
+        self,
+        id: int | None = None,
+        channel_id: int | None = None,
+        timestamp: int | None = None,
+        sort_type: SortType = SortType.ASC
+    ):
+        return list(self._get_rta(id, channel_id, timestamp, sort_type))
+
+    def get_near_rta(self, date: int, channel_id: int):
+        if not (isinstance(date, int) and isinstance(channel_id, int)):
+            raise ValueError("SQLインジェクションやめてね")
+        with closing(self.db.cursor()) as cur:
+            min_t = date - 60
+            max_t = date + 60
+            cur.execute(f"SELECT * FROM rta_db WHERE date >= {min_t} AND date <= {max_t} AND channel_id={channel_id};")
+            return cur.fetchall()
 
     def _get_rta(
         self,
+        id: int | None = None,
         channel_id: int | None = None,
-        sort_type: SortType = SortType.ASC,
-        iter: bool = False
+        timestamp: int | None = None,
+        sort_type: SortType = SortType.ASC
     ):
         # なんかキモい
         if not (
             isinstance(sort_type, SortType)
-            and isinstance(channel_id, int) or channel_id is None
+            and (isinstance(id, int) or id is None)
+            and (isinstance(timestamp, int) or timestamp is None)
+            and (isinstance(channel_id, int) or channel_id is None)
         ):
             raise ValueError("SQLインジェクションやめて!!!")
 
         where = ""
-        if channel_id is not None:
-            where = f"WHERE channel_id={channel_id} "
+        if id or channel_id or timestamp:
+            where = "WHERE "
+        argmap = ["id", "channel_id", "date"]
+        for i, j in enumerate([id, channel_id, timestamp]):
+            if j is None:
+                continue
+            where = where + f"{argmap[i]}={j} "
+        if where:
+            print(where)
 
         with closing(self.db.cursor()) as cur:
             cur.execute(f"SELECT * FROM rta_db {where}ORDER BY date {sort_type.value};")
-            return (yield from cur) if iter else cur.fetchall()
+            yield from cur
+
+    def delete_rta(self, id: int):
+        if not isinstance(id, int):
+            raise ValueError
+        cur = self.db.cursor()
+        cur.execute(f"DELETE FROM rta_db WHERE id={id}")
+        self.db.commit()
+        return True
 
 
 if __name__ == "__main__":
-    d = BotDB(get_db())
-    print(d.get_all_rta(SortType.ASC))
+    d = BotDB.get_default_db()
+    print("ffee")
+    a = d.get_all_rta(SortType.ASC)
+    print(a)
     d.db.close()

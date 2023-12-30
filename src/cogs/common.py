@@ -1,5 +1,6 @@
+import math
 import re
-from datetime import datetime, timezone
+import datetime as dt
 from random import randint
 
 import aiohttp
@@ -25,7 +26,7 @@ class CommonComands(commands.Cog):
             title="Pong!!", description=str(sec) + "ms", color=discord.Colour.blue()
         )
 
-        value = datetime.now(timezone.utc) - ctx.created_at
+        value = dt.datetime.now(dt.timezone.utc) - ctx.created_at
         embed.add_field(
             name="nowDate-timestamp", value=str(value.microseconds / 1000) + "ms"
         )
@@ -79,20 +80,76 @@ class CommonComands(commands.Cog):
 
 
 class RTACog(commands.Cog):
+    jst = dt.timezone(dt.timedelta(hours=9))
+
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
-        self.task_starter()
+        self.receiving = []
+        self.receiving_ch = []
 
-    def task_starter(self):
-        self.check_rta.start()
+        now = dt.datetime.utcnow().time()
+        start = now.replace(
+            second=(now.second - now.second % 5) + 5,
+            microsecond=0,
+        )
+        self.task_starter.change_interval(time=start)
+        self.task_starter.count = 1
+        self.task_starter.start()
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        ch_id = message.channel.id
+        if ch_id not in self.receiving_ch or message.author.bot:
+            return
+        rta = main_db.get_rta(self.receiving[self.receiving_ch.index(ch_id)])[0]
+        rta_date = dt.datetime.fromtimestamp(rta["date"], tz=dt.UTC)
+        diff = rta_date - message.created_at
+
+        embed = discord.Embed(
+            title="結果", description=f"{round(diff.total_seconds(), 3)}秒の差"
+        )
+        await message.reply(embed=embed)
 
     def cog_unload(self):
         self.check_rta.cancel()
 
+    @tasks.loop()
+    async def task_starter(self):
+        print("今の時間は", dt.datetime.now(tz=self.jst))
+        self.check_rta.start()
+        self.task_starter.stop()
+
     @tasks.loop(seconds=5)
     async def check_rta(self):
         for i in main_db.get_all_rta_iter():
-            print(i)
+            time = dt.datetime.fromtimestamp(i["date"])
+            dur = time - dt.datetime.utcnow()
+            tdiff = math.floor(dur.total_seconds())
+            if tdiff > 30:
+                continue
+
+            ch = self.bot.get_channel(i["channel_id"])
+            if not isinstance(ch, discord.TextChannel):
+                raise Exception
+
+            # 終了後の時
+            if tdiff <= -30:
+                embed = discord.Embed(title="終わった *!!!*")
+                await ch.send(embed=embed)
+                try:
+                    self.receiving.remove(i["id"])
+                    self.receiving_ch.remove(i["channel_id"])
+                except ValueError:
+                    pass
+                main_db.delete_rta(i["id"])
+                return
+
+            # 30秒前の時
+            if i["id"] in self.receiving: continue
+            embed = discord.Embed(title="rta開始", description="nice")
+            self.receiving.append(i["id"])
+            self.receiving_ch.append(i["channel_id"])
+            await ch.send(embed=embed)
 
     @ac.command(name="add_rta", description="RTAのスケジュールを追加します")
     async def add_rta(
@@ -112,8 +169,12 @@ class RTACog(commands.Cog):
             await ctx.response.send_message(embed=embed, ephemeral=True)
             return
         if year is None:
-            year = datetime.today().year
-        date = datetime(year, month, day, hour, minute, second)
+            year = dt.datetime.today().year
+
+        date = dt.datetime(year, month, day, hour, minute, second, tzinfo=self.jst)
+        if main_db.get_near_rta(int(date.timestamp()), ctx.channel_id):
+            await ctx.response.send_message(content="だめです")
+            return
         main_db.add_rta(date, ctx)
         await ctx.response.send_message("success")
 
@@ -126,8 +187,14 @@ class RTACog(commands.Cog):
         sort_type = db.SortType(sort)
         if ctx.channel_id is None:
             raise
-        data = main_db.get_rta(ctx.channel_id, sort_type)
-        resp = discord.Embed(title="このサーバーでの結果", description="aaaa")
+
+        all_rta = main_db.get_all_rta(sort_type=sort_type)
+        data = filter(lambda x: x["guild_id"] == ctx.guild_id, all_rta)
+        resp = discord.Embed(title="このサーバーでの結果")
+        for i, j in enumerate(data):
+            date = int(j["date"])
+            ch = j["channel_id"]
+            resp.add_field(name=f"{i+1}. <#{ch}>", value=f"<t:{date}:f>")
         await ctx.response.send_message(embed=resp)
 
 
