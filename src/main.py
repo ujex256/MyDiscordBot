@@ -1,6 +1,5 @@
 from os import getenv
 import sys
-from typing import Literal
 
 import discord
 import dotenv
@@ -31,12 +30,13 @@ async def setup_hook():
 
 
 @bot.tree.command(name="reload", description="extensionをreload")
-async def reload_all(ctx: discord.Interaction, sync: Literal["True", "False"]):
+async def reload_all(ctx: discord.Interaction, sync: bool):
     await bot.reload_extension("cogs.common")
     embed = discord.Embed(title="Success*!*", description="リロードした")
     await ctx.response.send_message(embed=embed)
-    if sync == "True":
+    if sync:
         await bot.tree.sync()
+
 
 if __name__ == "__main__":
     dotenv.load_dotenv()
