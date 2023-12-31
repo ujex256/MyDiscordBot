@@ -15,6 +15,8 @@ from discord.ext.commands import Bot
 import db
 
 main_db = db.BotDB.get_default_db()
+coloredlogs.install()
+logger = logging.getLogger(__name__)
 
 
 class CommonCommands(commands.Cog):
@@ -145,8 +147,9 @@ class RTACog(commands.Cog):
         self.receiving_ch = []
 
         now = dt.datetime.utcnow().time()
+        tg_sec = (now.second - now.second % 5) + 5
         start = now.replace(
-            second=(now.second - now.second % 5) + 5,
+            second=tg_sec if tg_sec < 60 else 0,
             microsecond=0,
         )
         self.task_starter.change_interval(time=start)
@@ -211,6 +214,7 @@ class RTACog(commands.Cog):
                         name=f"{j+1}位 <@{k['user_id']}>",
                         value=f"{k['diff']}秒"
                     )
+                logger.info(f"RTA(id: {i['id']})を終了しました。")
                 await ch.send(embeds=[embed, embed2])
                 return
 
@@ -222,6 +226,7 @@ class RTACog(commands.Cog):
                 description=f"設定された時刻は<t:{int(i['date'])}>です")
             self.receiving.append(i["id"])
             self.receiving_ch.append(i["channel_id"])
+            logger.info(f"RTA(id: {i['id']})を開始しました。")
             await ch.send(embed=embed)
 
     @ac.command(name="add_rta", description="RTAのスケジュールを追加します")
@@ -263,6 +268,7 @@ class RTACog(commands.Cog):
                 description=f"<t:{int(date.timestamp())}:f>に設定しました",
                 color=discord.Color.blue()
             )
+        logger.info(f"RTAを追加しました(日本時間: {date.strftime('%Y/%m/%d %H:%M:%S')})")
         await ctx.response.send_message(embed=embed)
 
     @ac.command(name="get_rta", description="設定されたスケジュールを表示")
