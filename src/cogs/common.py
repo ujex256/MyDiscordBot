@@ -1,9 +1,11 @@
+import datetime as dt
+import logging
 import math
 import re
-import datetime as dt
 from random import randint
 
 import aiohttp
+import coloredlogs
 import discord
 import yarl
 from discord import app_commands as ac
@@ -78,6 +80,61 @@ class CommonCommands(commands.Cog):
             embed.set_footer(text=f"ステータスコード: {status}")
         await ctx.response.send_message(embed=embed)
 
+    @ac.command(name="school_schedule", description="つくったひと(@ujex256)の学校のスケジュール")
+    async def school_schedule(self, ctx: discord.Interaction, day: int | None = None):
+        await ctx.response.send_message(embed=discord.Embed(title="取得中..."))
+        async with aiohttp.ClientSession() as req:
+            day = day if day else dt.datetime.today().day
+            url = "https://school_schedule-1-u5735815.deta.app/?day=" + str(day)
+            async with req.get(url) as resp:
+                if resp.status == 500:
+                    err = discord.Embed(
+                        title="エラー！", description="不明なエラー",
+                        color=discord.Color.red()
+                    )
+                    await ctx.response.edit_message(embed=err)
+                    return
+                elif resp.status == 404:
+                    err = discord.Embed(
+                        title="エラー！", description="その日は学校がない",
+                        color=discord.Color.red()
+                    )
+                    await ctx.response.edit_message(embed=err)
+                    return
+                json = await resp.json()
+
+        back_home_time = json["end_afternoon_homeroom"].split(":")
+        if back_home_time[0] < 15:
+            title = "@ujex256は早く帰れるらしい"
+        elif "短縮" in json["schedule_type"]:
+            title = "短縮時程らしい"
+        else:
+            title = "悲しいことに、平常時程だった"
+        embed = discord.Embed(title=title, description="", color=discord.Color.blue())
+        key_map = {
+            "day": "日付",
+            "schedule_type": "時程",
+            "lunch_exists": "給食があるか",
+            "clean_exists": "掃除があるか",
+            "club_exists": "部活があるか",
+            "end_afternoon_homeroom": "終会終了時間",
+        }
+        for i, j in json.values():
+            if i not in key_map.keys():
+                continue
+            embed.description += f"{key_map[i]}: {str(j)}\n"  # type: ignore
+        await ctx.response.edit_message(embed=embed)
+
+    @school_schedule.error
+    async def sc_error(self, ctx: discord.Interaction, error):
+        embed = discord.Embed(
+            title="エラー*!*",
+            description="ごめぇんね",
+            color=discord.Colour.red()
+        )
+        print("err")
+        # await ctx.response.edit_message(embed=embed)
+
 
 class RTACog(commands.Cog):
     jst = dt.timezone(dt.timedelta(hours=9))
@@ -129,8 +186,8 @@ class RTACog(commands.Cog):
     @tasks.loop(seconds=5)
     async def check_rta(self):
         for i in main_db.get_all_rta_iter():
-            time = dt.datetime.fromtimestamp(i["date"])
-            dur = time - dt.datetime.utcnow()
+            time = dt.datetime.fromtimestamp(i["date"], tz=self.jst)
+            dur = time - dt.datetime.now(tz=dt.UTC)
             time_diff = math.floor(dur.total_seconds())
             if time_diff > 15:
                 continue
@@ -151,7 +208,7 @@ class RTACog(commands.Cog):
                 embed2 = discord.Embed(title="ランキング", color=discord.Color.blue())
                 for j, k in enumerate(main_db.get_ranking(i["id"])):
                     embed2.add_field(
-                        name=f"{j+1}位 <@!{k['user_id']}>",
+                        name=f"{j+1}位 <@{k['user_id']}>",
                         value=f"{k['diff']}秒"
                     )
                 await ch.send(embeds=[embed, embed2])
@@ -187,6 +244,11 @@ class RTACog(commands.Cog):
         if diff.total_seconds() < 20:
             embed = discord.Embed(
                 title="エラー！", description="もっと遅い時間にして",
+                color=discord.Color.red()
+            )
+        elif second % 5 != 0:
+            embed = discord.Embed(
+                title="エラー！", description="秒数は5の倍数にしてください",
                 color=discord.Color.red()
             )
         elif main_db.get_near_rta(int(date.timestamp()), ctx.channel_id):
