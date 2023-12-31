@@ -185,7 +185,6 @@ class RTACog(commands.Cog):
 
         date = dt.datetime(year, month, day, hour, minute, second, tzinfo=self.jst)
         diff = date - dt.datetime.now(tz=dt.UTC)
-        print(diff)
         if diff.total_seconds() < 20:
             embed = discord.Embed(
                 title="エラー！", description="もっと遅い時間にして",

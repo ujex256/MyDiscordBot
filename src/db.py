@@ -72,7 +72,6 @@ class BotDB:
 
         cur = self.db.cursor()
         id = utils.generate_secure_id(10)
-        print(date.isoformat())
         cur.execute(
             dedent(
                 """
@@ -149,8 +148,6 @@ class BotDB:
             if j is None:
                 continue
             where = where + f"{argmap[i]}={j} "
-        if where:
-            print(where)
 
         with closing(self.db.cursor()) as cur:
             cur.execute(f"SELECT * FROM rta_db {where}ORDER BY date {sort_type.value};")
