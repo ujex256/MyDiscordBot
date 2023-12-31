@@ -1,11 +1,11 @@
-import discord
-
 import sqlite3
-from datetime import datetime
-from textwrap import dedent
-from pathlib import Path
-from enum import Enum
 from contextlib import closing
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from textwrap import dedent
+
+import discord
 
 import utils
 
@@ -211,6 +211,9 @@ class BotDB:
             return abs(d["diff"])
         if d is not None:
             return d["diff"]
+
+    def add_rta_schedule(self, date: datetime, interaction: discord.Interaction):
+        pass
 
 
 if __name__ == "__main__":
