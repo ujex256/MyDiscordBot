@@ -23,11 +23,10 @@ def get_db():
 
 def init_db(db: sqlite3.Connection):
     cur = db.cursor()
-    cur.execute(
-        dedent(
-            """
+    cur.execute(dedent(
+        """
         CREATE TABLE IF NOT EXISTS rta_db(
-            id INTEGER UNIQUE,
+            id INTEGER PRIMARY KEY,
             guild_id INTEGER,
             channel_id INTEGER,
             created_user INTEGER,
@@ -35,8 +34,16 @@ def init_db(db: sqlite3.Connection):
             created_at INTEGER
         ) STRICT;
         """
-        )
-    )
+    ))
+    cur.execute(dedent(
+        """
+        CREATE TABLE IF NOT EXISTS rta_ranking(
+            id INTEGER,
+            user_id INTEGER,
+            diff REAL
+        ) STRICT;
+        """
+    ))
     db.commit()
     db.row_factory = sqlite3.Row
 
@@ -97,7 +104,7 @@ class BotDB:
         id: int | None = None,
         channel_id: int | None = None,
         timestamp: int | None = None,
-        sort_type: SortType = SortType.ASC
+        sort_type: SortType = SortType.ASC,
     ):
         return list(self._get_rta(id, channel_id, timestamp, sort_type))
 
@@ -107,7 +114,15 @@ class BotDB:
         with closing(self.db.cursor()) as cur:
             min_t = date - 60
             max_t = date + 60
-            cur.execute(f"SELECT * FROM rta_db WHERE date >= {min_t} AND date <= {max_t} AND channel_id={channel_id};")
+            cur.execute(
+                dedent(
+                    """
+                    SELECT * FROM rta_db
+                    WHERE date >= ? AND date <= ? AND channel_id = ?;
+                    """
+                ),
+                (min_t, max_t, channel_id),
+            )
             return cur.fetchall()
 
     def _get_rta(
@@ -115,7 +130,7 @@ class BotDB:
         id: int | None = None,
         channel_id: int | None = None,
         timestamp: int | None = None,
-        sort_type: SortType = SortType.ASC
+        sort_type: SortType = SortType.ASC,
     ):
         # なんかキモい
         if not (
@@ -145,14 +160,65 @@ class BotDB:
         if not isinstance(id, int):
             raise ValueError
         cur = self.db.cursor()
-        cur.execute(f"DELETE FROM rta_db WHERE id={id}")
+        cur.execute("DELETE FROM rta_db WHERE id = ?", (id,))
+        cur.close()
         self.db.commit()
         return True
+
+    def append_ranking(self, id: int, user_id: int, time: float):
+        if not self.get_rta(id):
+            raise ValueError("そのidは存在しなかった")
+        cur = self.db.cursor()
+        cur.execute("SELECT * FROM rta_ranking WHERE id = ? AND user_id = ?;", (id, user_id))
+        existing_row = cur.fetchone()
+
+        if existing_row:
+            # 存在する場合はUPDATE文で置き換える
+            cur.execute(
+                "UPDATE rta_ranking SET diff = ? WHERE id = ? AND user_id = ?;",
+                (time, id, user_id),
+            )
+        else:
+            # 存在しない場合は挿入
+            cur.execute(
+                "INSERT INTO rta_ranking VALUES (?, ?, ?);",
+                (id, user_id, time)
+            )
+
+        cur.close()
+        self.db.commit()
+
+    def get_ranking(self, id: int):
+        if not isinstance(id, int):
+            raise ValueError
+        cur = self.db.cursor()
+        cur.execute(
+            "SELECT user_id, diff FROM rta_ranking WHERE id = ? ORDER BY ABS(diff)",
+            (id,)
+        )
+        d = cur.fetchall()
+        cur.close()
+        return d
+
+    def get_high_score(self, rta_id: int, user_id: int, absolute: bool = False):
+        if not (isinstance(rta_id, int) and isinstance(user_id, int)):
+            raise ValueError
+        cur = self.db.cursor()
+        cur.execute(
+            "SELECT diff FROM rta_ranking WHERE id = ? AND user_id = ?;",
+            (rta_id, user_id),
+        )
+        d = cur.fetchone()
+        cur.close()
+        if absolute and d is not None:
+            return abs(d["diff"])
+        if d is not None:
+            return d["diff"]
 
 
 if __name__ == "__main__":
     d = BotDB.get_default_db()
-    print("ffee")
-    a = d.get_all_rta(SortType.ASC)
+    # a = d.get_high_score()
+    a = d.get_all_rta()
     print(a)
     d.db.close()

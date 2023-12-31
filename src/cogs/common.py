@@ -15,7 +15,7 @@ import db
 main_db = db.BotDB.get_default_db()
 
 
-class CommonComands(commands.Cog):
+class CommonCommands(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
 
@@ -104,10 +104,17 @@ class RTACog(commands.Cog):
         rta = main_db.get_rta(self.receiving[self.receiving_ch.index(ch_id)])[0]
         rta_date = dt.datetime.fromtimestamp(rta["date"], tz=dt.UTC)
         diff = rta_date - message.created_at
+        time_diff = round(diff.total_seconds(), 3)
 
         embed = discord.Embed(
-            title="結果", description=f"{round(diff.total_seconds(), 3)}秒の差"
+            title="結果", description=f"{time_diff}秒の差"
         )
+        uid = message.author.id
+        high_sc = main_db.get_high_score(rta["id"], user_id=uid, absolute=True)
+
+        if high_sc is None or high_sc > abs(time_diff):
+            main_db.append_ranking(rta["id"], uid, time_diff)
+            embed.title = "記録更新"
         await message.reply(embed=embed)
 
     def cog_unload(self):
@@ -124,8 +131,8 @@ class RTACog(commands.Cog):
         for i in main_db.get_all_rta_iter():
             time = dt.datetime.fromtimestamp(i["date"])
             dur = time - dt.datetime.utcnow()
-            tdiff = math.floor(dur.total_seconds())
-            if tdiff > 15:
+            time_diff = math.floor(dur.total_seconds())
+            if time_diff > 15:
                 continue
 
             ch = self.bot.get_channel(i["channel_id"])
@@ -133,15 +140,21 @@ class RTACog(commands.Cog):
                 raise Exception
 
             # 終了後の時
-            if tdiff <= -15:
+            if time_diff <= -15:
                 embed = discord.Embed(title="終わった *!!!*")
-                await ch.send(embed=embed)
                 try:
                     self.receiving.remove(i["id"])
                     self.receiving_ch.remove(i["channel_id"])
                 except ValueError:
                     pass
                 main_db.delete_rta(i["id"])
+                embed2 = discord.Embed(title="ランキング", color=discord.Color.blue())
+                for j, k in enumerate(main_db.get_ranking(i["id"])):
+                    embed2.add_field(
+                        name=f"{j+1}位 <@!{k['user_id']}>",
+                        value=f"{k['diff']}秒"
+                    )
+                await ch.send(embeds=[embed, embed2])
                 return
 
             # 30秒前の時
@@ -149,7 +162,7 @@ class RTACog(commands.Cog):
                 continue
             embed = discord.Embed(
                 title="RTA開始",
-                description=f"設定された時刻は<t:{i['date']}>です")
+                description=f"設定された時刻は<t:{int(i['date'])}>です")
             self.receiving.append(i["id"])
             self.receiving_ch.append(i["channel_id"])
             await ch.send(embed=embed)
@@ -171,8 +184,9 @@ class RTACog(commands.Cog):
             year = dt.datetime.today().year
 
         date = dt.datetime(year, month, day, hour, minute, second, tzinfo=self.jst)
-        diff = date - dt.datetime.utcnow()
-        if diff.total_seconds() > 40:
+        diff = date - dt.datetime.now(tz=dt.UTC)
+        print(diff)
+        if diff.total_seconds() < 20:
             embed = discord.Embed(
                 title="エラー！", description="もっと遅い時間にして",
                 color=discord.Color.red()
@@ -186,7 +200,7 @@ class RTACog(commands.Cog):
             main_db.add_rta(date, ctx)
             embed = discord.Embed(
                 title="設定しました",
-                description=f"<t:{date.timestamp()}:f>に設定しました",
+                description=f"<t:{int(date.timestamp())}:f>に設定しました",
                 color=discord.Color.blue()
             )
         await ctx.response.send_message(embed=embed)
@@ -213,8 +227,8 @@ class RTACog(commands.Cog):
 
 
 async def setup(bot: Bot):
-    print("Common Comands added")
-    await bot.add_cog(CommonComands(bot))
+    print("Common Commands added")
+    await bot.add_cog(CommonCommands(bot))
     await bot.add_cog(RTACog(bot))
 
 
