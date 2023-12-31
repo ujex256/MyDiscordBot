@@ -1,6 +1,6 @@
 import sqlite3
 from contextlib import closing
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
@@ -41,6 +41,19 @@ def init_db(db: sqlite3.Connection):
             id INTEGER,
             user_id INTEGER,
             diff REAL
+        ) STRICT;
+        """
+    ))
+    cur.execute(dedent(
+        """
+        CREATE TABLE IF NOT EXISTS rta_schedule(
+            id INTEGER PRIMARY KEY,
+            guild INTEGER,
+            channel INTEGER,
+            created_user INTEGER,
+            start_date REAL,
+            interval_sec REAL,
+            remaining_count INTEGER
         ) STRICT;
         """
     ))
@@ -212,8 +225,15 @@ class BotDB:
         if d is not None:
             return d["diff"]
 
-    def add_rta_schedule(self, date: datetime, interaction: discord.Interaction):
-        pass
+    def add_rta_schedule(
+        self,
+        date: datetime,
+        interval: timedelta | int,
+        count: int,
+        ctx: discord.Interaction,
+    ):
+        cur = self.db.cursor()
+        # wip
 
 
 if __name__ == "__main__":
