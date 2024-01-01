@@ -190,7 +190,7 @@ class RTACog(commands.Cog):
                 title="エラー！", description="もっと遅い時間にして",
                 color=discord.Color.red()
             )
-        elif main_db.get_near_rta(int(date.timestamp()), ctx.channel_id):
+        elif main_db.get_near_rta(int(date.timestamp()), ctx.channel_id):  # type: ignore
             embed = discord.Embed(
                 title="エラー!", description="時間が被っています",
                 color=discord.Color.red()
