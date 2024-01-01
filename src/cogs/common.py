@@ -169,7 +169,6 @@ class RTACog(commands.Cog):
 
     @ac.command(name="add_rta", description="RTAのスケジュールを追加します")
     @ac.guild_only()
-    @commands.has_permissions(administrator=True)
     async def add_rta(
         self,
         ctx: discord.Interaction,
