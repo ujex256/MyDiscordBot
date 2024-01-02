@@ -279,7 +279,7 @@ class RTACog(commands.Cog):
 
         all_rta = main_db.get_all_rta(sort_type=sort_type)
         data = filter(lambda x: x["guild_id"] == ctx.guild_id, all_rta)
-        resp = discord.Embed(title="このサーバーでの結果", colour=discord.Colour.blurple())
+        resp = discord.Embed(title="このサーバーでの結果", colour=discord.Color.blurple())
         for i, j in enumerate(data):
             date = int(j["date"])
             ch = j["channel_id"]
