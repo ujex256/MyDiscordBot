@@ -7,7 +7,7 @@ from textwrap import dedent
 
 import discord
 
-import utils
+import utils.botutils as botutils
 
 
 def get_db():
@@ -84,7 +84,7 @@ class BotDB:
             raise ValueError("channel_id is None")
 
         cur = self.db.cursor()
-        id = utils.generate_secure_id(10)
+        id = botutils.generate_secure_id(10)
         cur.execute(
             dedent(
                 """
