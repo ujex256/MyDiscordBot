@@ -1,7 +1,8 @@
-import webuiapi
 from dataclasses import dataclass
-from discord import app_commands as ac
 from enum import Enum
+
+import webuiapi
+from discord import app_commands as ac
 
 
 # stable-diffusion-webui V1.7.0のサンプラー
