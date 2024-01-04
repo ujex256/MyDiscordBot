@@ -107,6 +107,7 @@ class SDCog(ac.Group):
             "prompt": prompt,
             "negative_prompt": negative_prompt,
             "sampler_name": sampler,
+            "sampler_index": sampler,
             "height": height,
             "width": width,
             "steps": steps,
@@ -122,6 +123,8 @@ class SDCog(ac.Group):
         img = await _api.txt2img(**params)  # type: ignore
         p_time = time.perf_counter() - s_time
 
+        print(img.info)
+        print(img.parameters)
         img_bytes = BytesIO()
         img.image.save(img_bytes, format="png")
         img_bytes.seek(0)  # ここ重要
