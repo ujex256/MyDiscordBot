@@ -135,7 +135,7 @@ class CommonCommands(commands.Cog):
             color=discord.Colour.red()
         )
         print("err")
-        # await ctx.response.edit_message(embed=embed)
+        await ctx.edit_original_response(embed=embed)
 
 
 class RTACog(commands.Cog):
