@@ -1,4 +1,5 @@
 import logging
+import time
 import uuid
 from io import BytesIO
 
@@ -117,14 +118,16 @@ class SDCog(ac.Group):
         if sd.Defaults.EMBEDDING not in _negative and not ignore_easynegative:
             params["negative_prompt"] = sd.Defaults.EMBEDDING + "," + params["negative_prompt"]
 
+        s_time = time.perf_counter()
         img = await _api.txt2img(**params)  # type: ignore
+        p_time = time.perf_counter() - s_time
 
         img_bytes = BytesIO()
         img.image.save(img_bytes, format="png")
         img_bytes.seek(0)  # ここ重要
         img_filename = str(uuid.uuid4()).replace("-", "") + ".png"
 
-        result = discord.Embed(title="生成完了", color=Color.blue())
+        result = discord.Embed(title=f"生成完了（{round(p_time, 2)}秒）", color=Color.blue())
         attach = discord.File(img_bytes, filename=img_filename)
         result.set_image(url=f"attachment://{img_filename}")
         await ctx.edit_original_response(embed=result, attachments=[attach])
