@@ -45,10 +45,10 @@ class Options:
 
 
 class Defaults:
-    MODEL = "Anything-v4.5-pruned-mergedVae"
+    MODEL = "HimawariMix-v8"
     VAE = "clearvae_v23"
     VAE_FULLNAME = "clearvae_v23.safetensors"
-    EMBEDDING = "EasyNegative"
+    NEGATIVE_PROMPTS = ["EasyNegative", "bad-hands-5", "badquality"]
     SAMPLER = Samplers.DPM_2M_KARRAS.value
 
     @classmethod
