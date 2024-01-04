@@ -78,7 +78,6 @@ class ModelsAPI:
         )
 
     def set_current_options(self, options: Options):
-        print(options.vae)
         self.api.set_options({"sd_model_checkpoint": options.model, "sd_vae": options.vae})
 
     def get_models(self):
