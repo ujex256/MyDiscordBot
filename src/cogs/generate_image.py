@@ -1,15 +1,15 @@
-import uuid
 import logging
+import uuid
 from io import BytesIO
 
 import coloredlogs
-import webuiapi
 import discord
+import webuiapi
+from discord import Color, Interaction
 from discord import app_commands as ac
 from discord.ext.commands import Bot
 
 from utils import stable_diffusion as sd
-
 
 PORT = 7861
 coloredlogs.install()
@@ -25,17 +25,17 @@ logger.info("Applied sd-options")
 
 class AutoCompletions:
     @classmethod
-    async def model(cls, ctx: discord.Interaction, inputted: str):
+    async def model(cls, ctx: Interaction, inputted: str):
         models = _sd_models.get_models()
         return await cls._candidate(inputted, models)
 
     @classmethod
-    async def vae(cls, ctx: discord.Interaction, inputted: str):
+    async def vae(cls, ctx: Interaction, inputted: str):
         vaes = _sd_models.get_vaes()
         return await cls._candidate(inputted, vaes)
 
     @classmethod
-    async def sampler(cls, ctx: discord.Interaction, inputted: str):
+    async def sampler(cls, ctx: Interaction, inputted: str):
         samplers = [i.value for i in sd.Samplers]
         return await cls._candidate(inputted, samplers)
 
@@ -65,7 +65,7 @@ class SDCog(ac.Group):
     )
     async def generate(
         self,
-        interaction: discord.Interaction,
+        ctx: Interaction,
         prompt: str,
         negative_prompt: str = "",
         model: str | None = None,
@@ -83,20 +83,20 @@ class SDCog(ac.Group):
 
         embed = None
         if model and model not in _sd_models.get_models():
-            embed = discord.Embed(title="エラー！", description="モデルがありません", color=discord.Color.red())
+            embed = discord.Embed(title="エラー！", description="モデルがありません", color=Color.red())
         elif vae and vae not in _sd_models.get_vaes():
-            embed = discord.Embed(title="エラー！", description="VAEがありません", color=discord.Color.red())
+            embed = discord.Embed(title="エラー！", description="VAEがありません", color=Color.red())
         elif model:
             option.model = model
         elif vae:
             option.vae = vae
 
         if embed:
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await ctx.response.send_message(embed=embed, ephemeral=True)
             return
 
-        embed = discord.Embed(title="生成中...", description="", color=discord.Color.blue())
-        await interaction.response.send_message(embed=embed)
+        embed = discord.Embed(title="生成中...", description="", color=Color.blue())
+        await ctx.response.send_message(embed=embed)
 
         _sd_models.set_current_options(option)
 
@@ -124,10 +124,10 @@ class SDCog(ac.Group):
         img_bytes.seek(0)  # ここ重要
         img_filename = str(uuid.uuid4()).replace("-", "") + ".png"
 
-        result = discord.Embed(title="生成完了", color=discord.Color.blue())
+        result = discord.Embed(title="生成完了", color=Color.blue())
         attach = discord.File(img_bytes, filename=img_filename)
         result.set_image(url=f"attachment://{img_filename}")
-        await interaction.edit_original_response(embed=result, attachments=[attach])
+        await ctx.edit_original_response(embed=result, attachments=[attach])
 
 
 async def setup(bot: Bot):
