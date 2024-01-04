@@ -1,3 +1,11 @@
 {
-    "python.analysis.typeCheckingMode": "basic"
+    "python.analysis.typeCheckingMode": "basic",
+    "cSpell.words": [
+        "aiohttp",
+        "clearvae",
+        "DDIM",
+        "HEUN",
+        "KARRAS",
+        "webuiapi"
+    ]
 }
