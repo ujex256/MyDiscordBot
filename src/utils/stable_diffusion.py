@@ -62,7 +62,7 @@ class Defaults:
     def to_options(cls):
         return Options(
             model=cls.MODEL,
-            vae=cls.VAE
+            vae=cls.VAE_FULLNAME
         )
 
 
@@ -78,13 +78,14 @@ class ModelsAPI:
         )
 
     def set_current_options(self, options: Options):
+        print(options.vae)
         self.api.set_options({"sd_model_checkpoint": options.model, "sd_vae": options.vae})
 
     def get_models(self):
         return [i["model_name"] for i in self.api.get_sd_models()]
 
     def get_vaes(self):
-        return [i["model_name"].removesuffix(".safetensors").removesuffix(".vae.pt") for i in self.api.get_sd_vae()]
+        return [i["model_name"] for i in self.api.get_sd_vae()]
 
     def get_embeddings(self):
         return list(self.api.get_embeddings()["loaded"].keys())
