@@ -52,9 +52,6 @@ class SDCog(ac.Group):
     Args:
         bot (discord.ext.commands.Bot): Bot instance
     """
-    DEFAULT_OPTIONS = {
-        "sd_model_checkpoint": "Anything-v4.5-pruned-mergedVae"
-    }
 
     def __init__(self, bot: Bot, **kwargs) -> None:
         super().__init__(**kwargs)
