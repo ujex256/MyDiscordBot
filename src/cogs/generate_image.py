@@ -123,14 +123,16 @@ class SDCog(ac.Group):
         img = await _api.txt2img(**params)  # type: ignore
         p_time = time.perf_counter() - s_time
 
-        print(img.info)
-        print(img.parameters)
         img_bytes = BytesIO()
         img.image.save(img_bytes, format="png")
         img_bytes.seek(0)  # ここ重要
         img_filename = str(uuid.uuid4()).replace("-", "") + ".png"
 
         result = discord.Embed(title=f"生成完了（{round(p_time, 2)}秒）", color=Color.blue())
+        result.add_field(name="プロンプト", value=prompt)
+        result.add_field(name="ネガティブプロンプト", value=negative_prompt)
+        result.add_field(name="Seed", value=str(img.info["seed"]), inline=False)
+        result.add_field(name="モデル", value=img.info["sd_model_name"], inline=False)
         attach = discord.File(img_bytes, filename=img_filename)
         result.set_image(url=f"attachment://{img_filename}")
         await ctx.edit_original_response(embed=result, attachments=[attach])
