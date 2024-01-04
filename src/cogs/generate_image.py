@@ -28,7 +28,11 @@ class AutoCompletions:
     @classmethod
     async def model(cls, ctx: Interaction, inputted: str):
         models = _sd_models.get_models()
-        return await cls._candidate(inputted, models)
+        if isinstance(ctx.channel, discord.TextChannel) and ctx.channel.is_nsfw():
+            return await cls._candidate(inputted, models)
+        else:
+            models = [i for i in models if "nsfw" not in i]
+            return await cls._candidate(inputted, models)
 
     @classmethod
     async def vae(cls, ctx: Interaction, inputted: str):
@@ -77,7 +81,7 @@ class SDCog(ac.Group):
         steps: int = 20,
         seed: int = -1,
         cfg_scale: float = 7.0,
-        ignore_easynegative: bool = False
+        ignore_default_negative_prompts: bool = False
     ):
 
         option = sd.Defaults.to_options()
@@ -115,9 +119,14 @@ class SDCog(ac.Group):
             "cfg_scale": cfg_scale,
             "use_async": True,
         }
-        _negative = map(lambda x: x.replace(" ", ""), params["negative_prompt"].split(","))
-        if sd.Defaults.EMBEDDING not in _negative and not ignore_easynegative:
-            params["negative_prompt"] = sd.Defaults.EMBEDDING + "," + params["negative_prompt"]
+        # ネガティブプロンプトを調整
+        _negative = list(map(lambda x: x.replace(" ", ""), params["negative_prompt"].split(",")))
+        if not ignore_default_negative_prompts:
+            for i in reversed(sd.Defaults.NEGATIVE_PROMPTS):
+                if i not in _negative:
+                    negative_prompt = i + ", " + negative_prompt
+        if isinstance(ctx.channel, discord.TextChannel) and (not ctx.channel.is_nsfw()):
+            negative_prompt = "nsfw, " + negative_prompt
 
         s_time = time.perf_counter()
         img = await _api.txt2img(**params)  # type: ignore
@@ -129,8 +138,8 @@ class SDCog(ac.Group):
         img_filename = str(uuid.uuid4()).replace("-", "") + ".png"
 
         result = discord.Embed(title=f"生成完了（{round(p_time, 2)}秒）", color=Color.blue())
-        result.add_field(name="プロンプト", value=prompt)
-        result.add_field(name="ネガティブプロンプト", value=negative_prompt)
+        result.add_field(name="プロンプト", value=prompt[:1024])
+        result.add_field(name="ネガティブプロンプト", value=negative_prompt[:1024])
         result.add_field(name="Seed", value=str(img.info["seed"]), inline=False)
         result.add_field(name="モデル", value=img.info["sd_model_name"], inline=False)
         attach = discord.File(img_bytes, filename=img_filename)
