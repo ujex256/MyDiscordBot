@@ -122,13 +122,11 @@ class SDCog(ac.Group):
             "use_async": True,
         }
         # ネガティブプロンプトを調整
-        _negative = list(map(lambda x: x.replace(" ", ""), params["negative_prompt"].split(",")))
-        if not ignore_default_negative_prompts:
-            for i in reversed(sd.Defaults.NEGATIVE_PROMPTS):
-                if i not in _negative:
-                    negative_prompt = i + ", " + negative_prompt
-        if isinstance(ctx.channel, discord.TextChannel) and (not ctx.channel.is_nsfw()):
-            negative_prompt = "nsfw, " + negative_prompt
+        negative_prompt = sd.format_negative_prompt(
+            negative_prompt,
+            isinstance(ctx.channel, discord.TextChannel) and (not ctx.channel.is_nsfw()),
+            ignore_default_negative_prompts
+        )
 
         s_time = time.perf_counter()
         img = await _api.txt2img(**params)  # type: ignore

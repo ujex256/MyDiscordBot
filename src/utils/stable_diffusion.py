@@ -113,5 +113,27 @@ def _format_name(name: str, upper: bool = True) -> str:
     return name.replace("", "_").replace("-", "_").replace("+", "")
 
 
+def format_negative_prompt(txt: str, is_nsfw: bool = False, ignore_defaults: bool = False) -> str:
+    """ネガティブプロンプトの整理
+
+    Args:
+        txt (str): プロンプト
+        is_nsfw (bool, optional): ctx.channel.is_nsfw()の値。
+        ignore_defaults (bool, optional): EasyNegativeなどのおまじない系を無視するか
+
+    Returns:
+        str: 結果
+    """
+    _negative = list(map(lambda x: x.replace(" ", ""), txt.split(",")))
+    result = txt
+    if not ignore_defaults:
+        for i in reversed(Defaults.NEGATIVE_PROMPTS):
+            if i not in _negative:
+                result = i + ", " + result
+    if not is_nsfw:
+        result = "nsfw, " + result
+    return result
+
+
 def make_choices(choices: list):
     return [ac.Choice(name=i, value=i) for i in choices]
