@@ -27,6 +27,7 @@ async def on_ready():
 @bot.event
 async def setup_hook():
     await bot.load_extension("cogs.common")
+    await bot.load_extension("cogs.generate_image")
 
 
 @bot.tree.command(name="reload", description="extensionをreload")
@@ -36,6 +37,7 @@ async def reload_all(ctx: discord.Interaction, sync: bool):
         return
 
     await bot.reload_extension("cogs.common")
+    await bot.reload_extension("cogs.generate_image")
     embed = discord.Embed(
         title="Success*!*",
         description="リロードした",
