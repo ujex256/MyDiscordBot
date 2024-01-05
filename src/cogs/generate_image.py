@@ -78,8 +78,8 @@ class SDCog(ac.Group):
         ctx: Interaction,
         prompt: str,
         negative_prompt: str = "",
-        model: str | None = None,
-        vae: str | None = None,
+        model: str = sd.Defaults.MODEL,
+        vae: str = sd.Defaults.VAE_FULLNAME,
         sampler: str | None = None,
         height: int = 512,
         width: int = 512,
@@ -89,17 +89,14 @@ class SDCog(ac.Group):
         ignore_default_negative_prompts: bool = False
     ):
 
-        option = sd.Defaults.to_options()
-
+        option = sd.Options(model, vae)
         embed = None
-        if model and model not in _sd_models.get_models():
+        try:
+            _sd_models.validate_options(option)
+        except sd.ModelNotFound:
             embed = discord.Embed(title="エラー！", description="モデルがありません", color=Color.red())
-        elif vae and vae not in _sd_models.get_vaes():
+        except sd.VAENotFound:
             embed = discord.Embed(title="エラー！", description="VAEがありません", color=Color.red())
-        elif model:
-            option.model = model
-        elif vae:
-            option.vae = vae
 
         if embed:
             await ctx.response.send_message(embed=embed, ephemeral=True)

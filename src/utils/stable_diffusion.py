@@ -91,6 +91,21 @@ class ModelsAPI:
     def get_embeddings(self):
         return list(self.api.get_embeddings()["loaded"].keys())
 
+    def validate_options(self, options: Options):
+        if options.model not in self.get_models():
+            raise ModelNotFound(f"This model \"{options.model}\" is not found.")
+        elif options.vae not in self.get_vaes():
+            raise VAENotFound(f"This vae \"{options.vae}\" is not found.")
+        return True
+
+
+class ModelNotFound(Exception):
+    pass
+
+
+class VAENotFound(Exception):
+    pass
+
 
 def _format_name(name: str, upper: bool = True) -> str:
     if upper:
