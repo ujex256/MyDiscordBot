@@ -25,8 +25,13 @@ logger.info("Applied sd-options")
 
 
 class AutoCompletions:
+    """モデル類のオートコンプリート系
+
+    Returns:
+        List[app_commands.Choice]: 候補のリスト
+    """
     @classmethod
-    async def model(cls, ctx: Interaction, inputted: str):
+    async def model(cls, ctx: Interaction, inputted: str) -> list[ac.Choice]:
         models = _sd_models.get_models()
         if isinstance(ctx.channel, discord.TextChannel) and ctx.channel.is_nsfw():
             return await cls._candidate(inputted, models)
@@ -35,17 +40,17 @@ class AutoCompletions:
             return await cls._candidate(inputted, models)
 
     @classmethod
-    async def vae(cls, ctx: Interaction, inputted: str):
+    async def vae(cls, ctx: Interaction, inputted: str) -> list[ac.Choice]:
         vaes = _sd_models.get_vaes()
         return await cls._candidate(inputted, vaes)
 
     @classmethod
-    async def sampler(cls, ctx: Interaction, inputted: str):
+    async def sampler(cls, ctx: Interaction, inputted: str) -> list[ac.Choice]:
         samplers = [i.value for i in sd.Samplers]
         return await cls._candidate(inputted, samplers)
 
     @staticmethod
-    async def _candidate(text: str, candidates: list):
+    async def _candidate(text: str, candidates: list) -> list[ac.Choice]:
         if text == "":
             return [ac.Choice(name=i, value=i) for i in candidates]
         return [ac.Choice(name=i, value=i) for i in candidates if text.lower() in i.lower()]

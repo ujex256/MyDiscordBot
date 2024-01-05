@@ -68,6 +68,7 @@ class Defaults:
 
 
 class ModelsAPI:
+    """オプションの設定や取得"""
     def __init__(self, api: webuiapi.WebUIApi) -> None:
         self.api = api
 

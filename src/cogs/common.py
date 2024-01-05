@@ -20,6 +20,11 @@ logger = logging.getLogger(__name__)
 
 
 class CommonCommands(commands.Cog):
+    """どの環境でも動かせるコマンド類
+
+    Args:
+        bot (bot): _description_
+    """
     def __init__(self, bot: Bot):
         self.bot = bot
 
@@ -139,6 +144,12 @@ class CommonCommands(commands.Cog):
 
 
 class RTACog(commands.Cog):
+    """RTA関係のCog
+    5秒ごとに確認を行います
+
+    Args:
+        bot (bot): _description_
+    """
     jst = dt.timezone(dt.timedelta(hours=9))
 
     def __init__(self, bot: Bot) -> None:
