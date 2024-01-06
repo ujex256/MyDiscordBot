@@ -28,6 +28,7 @@ class AutoCompletions:
     Returns:
         List[app_commands.Choice]: 候補のリスト
     """
+
     @classmethod
     async def model(cls, ctx: Interaction, inputted: str) -> list[ac.Choice]:
         models = _sd_models.get_models()
@@ -69,7 +70,7 @@ class SDCog(ac.Group):
     @ac.autocomplete(
         model=AutoCompletions.model,
         vae=AutoCompletions.vae,
-        sampler=AutoCompletions.sampler
+        sampler=AutoCompletions.sampler,
     )
     async def generate(
         self,
@@ -84,7 +85,7 @@ class SDCog(ac.Group):
         steps: int = 20,
         seed: int = -1,
         cfg_scale: float = 7.0,
-        ignore_default_negative_prompts: bool = False
+        ignore_default_negative_prompts: bool = False,
     ):
         option = sd.Options(model, vae)
         embed = None
@@ -122,7 +123,7 @@ class SDCog(ac.Group):
         negative_prompt = sd.format_negative_prompt(
             negative_prompt,
             isinstance(ctx.channel, discord.TextChannel) and (not ctx.channel.is_nsfw()),
-            ignore_default_negative_prompts
+            ignore_default_negative_prompts,
         )
 
         s_time = time.perf_counter()
@@ -142,7 +143,7 @@ class SDCog(ac.Group):
     @ac.autocomplete(
         model=AutoCompletions.model,
         vae=AutoCompletions.vae,
-        sampler=AutoCompletions.sampler
+        sampler=AutoCompletions.sampler,
     )
     async def hires_txt2img(
         self,
@@ -157,7 +158,7 @@ class SDCog(ac.Group):
         steps: int = 20,
         seed: int = -1,
         cfg_scale: float = 7.0,
-        ignore_default_negative_prompts: bool = False
+        ignore_default_negative_prompts: bool = False,
     ):
         pass
 
