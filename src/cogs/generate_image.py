@@ -1,7 +1,5 @@
 import logging
 import time
-import uuid
-from io import BytesIO
 
 import coloredlogs
 import discord
@@ -88,7 +86,6 @@ class SDCog(ac.Group):
         cfg_scale: float = 7.0,
         ignore_default_negative_prompts: bool = False
     ):
-
         option = sd.Options(model, vae)
         embed = None
         try:
@@ -132,19 +129,37 @@ class SDCog(ac.Group):
         img = await _api.txt2img(**params)  # type: ignore
         p_time = time.perf_counter() - s_time
 
-        img_bytes = BytesIO()
-        img.image.save(img_bytes, format="png")
-        img_bytes.seek(0)  # ここ重要
-        img_filename = str(uuid.uuid4()).replace("-", "") + ".png"
-
         result = discord.Embed(title=f"生成完了（{round(p_time, 2)}秒）", color=Color.blue())
         result.add_field(name="プロンプト", value=prompt[:1024])
         result.add_field(name="ネガティブプロンプト", value=negative_prompt[:1024])
         result.add_field(name="Seed", value=str(img.info["seed"]), inline=False)
         result.add_field(name="モデル", value=img.info["sd_model_name"], inline=False)
-        attach = discord.File(img_bytes, filename=img_filename)
-        result.set_image(url=f"attachment://{img_filename}")
+        attach = sd.image_to_discord_file(img.image)
+        result.set_image(url=f"attachment://{attach.filename}")
         await ctx.edit_original_response(embed=result, attachments=[attach])
+
+    @ac.command(name="txt2img-hires-fix", description="Hires.Fixで生成します")
+    @ac.autocomplete(
+        model=AutoCompletions.model,
+        vae=AutoCompletions.vae,
+        sampler=AutoCompletions.sampler
+    )
+    async def hires_txt2img(
+        self,
+        ctx: Interaction,
+        prompt: str,
+        negative_prompt: str = "",
+        model: str = sd.Defaults.MODEL,
+        vae: str = sd.Defaults.VAE_FULLNAME,
+        sampler: str | None = None,
+        height: int = 512,
+        width: int = 512,
+        steps: int = 20,
+        seed: int = -1,
+        cfg_scale: float = 7.0,
+        ignore_default_negative_prompts: bool = False
+    ):
+        pass
 
 
 async def setup(bot: Bot):

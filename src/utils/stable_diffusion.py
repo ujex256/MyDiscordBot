@@ -1,8 +1,12 @@
+import uuid
 from dataclasses import dataclass
 from enum import Enum
+from io import BytesIO
 
+import discord
 import webuiapi
 from discord import app_commands as ac
+from PIL.Image import Image
 
 
 # stable-diffusion-webui V1.7.0のサンプラー
@@ -137,3 +141,11 @@ def format_negative_prompt(txt: str, is_nsfw: bool = False, ignore_defaults: boo
 
 def make_choices(choices: list):
     return [ac.Choice(name=i, value=i) for i in choices]
+
+
+def image_to_discord_file(image: Image, spoiler: bool = False) -> discord.File:
+    img_bytes = BytesIO()
+    image.save(img_bytes, format="png")
+    img_bytes.seek(0)  # ここ重要
+    img_filename = str(uuid.uuid4()).replace("-", "") + ".png"
+    return discord.File(img_bytes, filename=img_filename, spoiler=spoiler)
